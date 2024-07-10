@@ -1,6 +1,6 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Command, CommandList, CommandItem, CommandGroup, CommandEmpty } from '../ui/command';
-import { TagInputStyleClassesProps, type Tag as TagType } from './tag-input';
+import React, { useEffect, useRef, useState } from 'react';
+import { Command, CommandEmpty, CommandGroup, CommandItem, CommandList } from '../ui/command';
+import { type Tag as TagType, TagInputStyleClassesProps } from './tag-input';
 import { cn } from '../utils';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { Button } from '../ui/button';
@@ -35,7 +35,6 @@ export const Autocomplete: React.FC<AutocompleteProps> = ({
 
   const [popoverWidth, setPopoverWidth] = useState<number>(0);
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
-  const [inputFocused, setInputFocused] = useState(false);
   const [popooverContentTop, setPopoverContentTop] = useState<number>(0);
 
   // Dynamically calculate the top position for the popover content
@@ -66,35 +65,13 @@ export const Autocomplete: React.FC<AutocompleteProps> = ({
     };
   }, [isPopoverOpen]);
 
-  const handleOpenChange = useCallback(
-    (open: boolean) => {
-      if (open && triggerContainerRef.current) {
-        const { width } = triggerContainerRef.current.getBoundingClientRect();
-        setPopoverWidth(width);
-      }
-
-      if (open) {
-        inputRef.current?.focus();
-        setIsPopoverOpen(open);
-      }
-    },
-    [inputFocused],
-  );
-
   const handleInputFocus = (event: React.FocusEvent<HTMLInputElement> | React.FocusEvent<HTMLTextAreaElement>) => {
-    // Only set inputFocused to true if the popover is already open.
-    // This will prevent the popover from opening due to an input focus if it was initially closed.
-    if (isPopoverOpen) {
-      setInputFocused(true);
-    }
-
+    setIsPopoverOpen(true);
     const userOnFocus = (children as React.ReactElement<any>).props.onFocus;
     if (userOnFocus) userOnFocus(event);
   };
 
   const handleInputBlur = (event: React.FocusEvent<HTMLInputElement> | React.FocusEvent<HTMLTextAreaElement>) => {
-    setInputFocused(false);
-
     // Allow the popover to close if no other interactions keep it open
     if (!isPopoverOpen) {
       setIsPopoverOpen(false);
@@ -102,6 +79,13 @@ export const Autocomplete: React.FC<AutocompleteProps> = ({
 
     const userOnBlur = (children as React.ReactElement<any>).props.onBlur;
     if (userOnBlur) userOnBlur(event);
+  };
+  const handlePopoverFocus = (event: Event) => {
+    // Prevent the input from losing focus when clicking inside the popover
+    event.preventDefault();
+    const { width } = triggerContainerRef.current.getBoundingClientRect();
+    setPopoverWidth(width);
+    inputRef.current?.focus();
   };
 
   const toggleTag = (option: TagType) => {
@@ -133,7 +117,7 @@ export const Autocomplete: React.FC<AutocompleteProps> = ({
 
   return (
     <Command className={cn('w-full h-full', classStyleProps.command)}>
-      <Popover open={isPopoverOpen} onOpenChange={handleOpenChange}>
+      <Popover open={isPopoverOpen}>
         <div
           className="relative h-full flex items-center rounded-md border border-input bg-transparent pr-3"
           ref={triggerContainerRef}
@@ -170,6 +154,7 @@ export const Autocomplete: React.FC<AutocompleteProps> = ({
         </div>
         <PopoverContent
           ref={popoverContentRef}
+          onOpenAutoFocus={handlePopoverFocus}
           side="bottom"
           align="start"
           className={cn(`p-0 relative`, classStyleProps.popoverContent)}
